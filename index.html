@@ -1,0 +1,3140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gestión de Investigación - I.E.S.T.P. "A.A.C.D."</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- jsPDF para generar PDFs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            display: flex;
+            min-height: 100vh;
+            visibility: hidden; 
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        
+        .container.visible {
+            visibility: visible;
+            opacity: 1;
+        }
+        
+        .login-screen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            width: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            z-index: 2000;
+        }
+        
+        .login-card {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .login-card h2 {
+            font-size: 24px;
+            color: #667eea;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+        }
+
+        .login-card input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .login-card button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            transition: opacity 0.3s;
+        }
+        
+        .login-card button:hover {
+            opacity: 0.9;
+        }
+
+        .login-error {
+            color: #ff4444;
+            margin-top: 15px;
+            font-weight: 600;
+        }
+
+        .login-info {
+            font-size: 12px;
+            color: #888;
+            margin-top: 20px;
+            text-align: left;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .sidebar {
+            width: 280px;
+            background: white;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar.closed {
+            transform: translateX(-280px);
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .sidebar-header h2 {
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+
+        .sidebar-header p {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .user-info {
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .user-info h3 {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .user-role {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        .menu {
+            padding: 20px 0;
+        }
+
+        .menu-item {
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: #555;
+            text-decoration: none;
+        }
+
+        .menu-item:hover {
+            background: #f5f5f5;
+            color: #667eea;
+        }
+
+        .menu-item.active {
+            background: linear-gradient(90deg, #667eea22 0%, transparent 100%);
+            border-left: 4px solid #667eea;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .menu-item svg {
+            margin-right: 12px;
+            width: 20px;
+            height: 20px;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        .topbar {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .menu-toggle {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            transition: background 0.3s;
+        }
+
+        .menu-toggle:hover {
+            background: #f0f0f0;
+        }
+
+        .topbar h1 {
+            font-size: 24px;
+            color: #333;
+        }
+
+        .topbar-right {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .notification-btn, .logout-btn {
+            background: #f5f5f5;
+            border: none;
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .notification-btn:hover, .logout-btn:hover {
+            background: #e0e0e0;
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: #ff4444;
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .card-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .card-title {
+            font-size: 14px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .card-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #333;
+            margin: 10px 0;
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #f0f0f0;
+        }
+
+        .card-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .badge-info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .form-section {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .form-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .required {
+            color: #ff4444;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #555;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .file-upload {
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .file-upload:hover {
+            background: #f8f9ff;
+        }
+
+        .file-upload input {
+            display: none;
+        }
+
+        .table-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        table thead {
+            background: #f8f9fa;
+        }
+
+        table th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #555;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        table td {
+            padding: 15px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        table tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .status {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-approved {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-review {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .action-btn {
+            padding: 6px 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .action-btn:hover {
+            background: #5568d3;
+        }
+
+        .timeline {
+            position: relative;
+            padding: 20px 0;
+        }
+
+        .timeline-item {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+            position: relative;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 20px;
+            top: 40px;
+            bottom: -30px;
+            width: 2px;
+            background: #e0e0e0;
+        }
+
+        .timeline-item:last-child::before {
+            display: none;
+        }
+
+        .timeline-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            border: 3px solid #667eea;
+            flex-shrink: 0;
+            z-index: 1;
+        }
+
+        .timeline-icon.completed {
+            background: #667eea;
+            color: white;
+        }
+
+        .timeline-content {
+            flex: 1;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .timeline-content h4 {
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .timeline-content p {
+            color: #888;
+            font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                z-index: 1000;
+                height: 100vh;
+            }
+
+            .main-content {
+                padding: 15px;
+            }
+
+            .cards-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* Estilos para mensajes toast */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            background: #28a745;
+            color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 9999;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .toast.error { background: #dc3545; }
+        .toast.warning { background: #ffc107; color: #333; }
+        .toast.info { background: #17a2b8; }
+    </style>
+</head>
+<body>
+    <div id="loginScreen" class="login-screen">
+        <div class="login-card">
+            <h2 style="color: #764ba2;">🔐 I.E.S.T.P. "A.A.C.D."</h2>
+            <p style="margin-bottom: 30px; color: #555;">Sistema de Gestión de Investigación</p>
+            
+            <form id="loginForm">
+                <input type="text" id="username" placeholder="Usuario Institucional (Email)" required>
+                <input type="password" id="password" placeholder="Contraseña" required>
+                <button type="submit">Iniciar Sesión</button>
+                <div id="loginError" class="login-error hidden">Credenciales incorrectas o acceso denegado.</div>
+                
+                <div class="login-info">
+                
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="container" id="appContainer">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h2>I.E.S.T.P. "A.A.C.D."</h2>
+                <p>Sistema de Gestión de Investigación</p>
+            </div>
+            
+            <div class="user-info">
+                <h3 id="userName">Usuario del Sistema</h3>
+                <span class="user-role" id="userRole">Docente Investigador</span>
+            </div>
+
+            <nav class="menu">
+                <a href="#" class="menu-item active" onclick="showSection('dashboard'); return false;">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    Dashboard
+                </a>
+                <a href="#" class="menu-item" onclick="showSection('registro'); return false;">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Registro de Proyecto
+                </a>
+                <a href="#" class="menu-item" onclick="showSection('perfil'); return false;">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                    </svg>
+                    Perfil del Proyecto
+                </a>
+                <a href="#" class="menu-item" onclick="showSection('avances'); return false;">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                    Avances Periódicos
+                </a>
+                <a href="#" class="menu-item" onclick="showSection('informe'); return false;">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Informe Final
+                </a>
+                <a href="#" class="menu-item" onclick="showSection('evaluacion'); return false;">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                    </svg>
+                    Evaluación
+                </a>
+                <a href="#" class="menu-item" onclick="showSection('resoluciones'); return false;">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path>
+                    </svg>
+                    Resoluciones y Archivo
+                </a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="topbar">
+                <div class="topbar-left">
+                    <button class="menu-toggle" onclick="toggleSidebar()">
+                        <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
+                    <h1 id="pageTitle">Dashboard</h1>
+                </div>
+                <div class="topbar-right">
+                    <button class="notification-btn" onclick="alert('📬 Notificaciones\n\n1. Nuevo proyecto asignado\n2. Avance #3 vence en 5 días\n3. Resolución RD-003-2024 emitida')">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                        </svg>
+                        <span class="notification-badge">3</span>
+                    </button>
+                    <button class="logout-btn" onclick="systemLogout()">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Dashboard Section -->
+            <div id="dashboard" class="content-section">
+                <div class="cards-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                                <svg width="24" height="24" fill="white" viewBox="0 0 24 24">
+                                    <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="card-title">Proyectos Activos</div>
+                        <div class="card-value" id="stat-active-projects">5</div>
+                        <div class="card-footer">
+                            <span class="card-badge badge-success">2 En evaluación</span>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                                <svg width="24" height="24" fill="white" viewBox="0 0 24 24">
+                                    <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="card-title">Avances Pendientes</div>
+                        <div class="card-value" id="stat-pending-advances">3</div>
+                        <div class="card-footer">
+                            <span class="card-badge badge-warning">Vence en 5 días</span>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                                <svg width="24" height="24" fill="white" viewBox="0 0 24 24">
+                                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="card-title">Proyectos Aprobados</div>
+                        <div class="card-value" id="stat-approved-projects">12</div>
+                        <div class="card-footer">
+                            <span class="card-badge badge-success">+3 este mes</span>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                                <svg width="24" height="24" fill="white" viewBox="0 0 24 24">
+                                    <path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="card-title">Evaluaciones</div>
+                        <div class="card-value" id="stat-evaluations">8</div>
+                        <div class="card-footer">
+                            <span class="card-badge badge-info">2 completadas hoy</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <h2 style="margin-bottom: 20px; color: #333;">Mis Proyectos Recientes</h2>
+                    <table id="projectsTable">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Título del Proyecto</th>
+                                <th>Tipo</th>
+                                <th>Fecha Inicio</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>INV-2024-001</td>
+                                <td>Sistema de Gestión Académica con IA</td>
+                                <td>Innovación Tecnológica</td>
+                                <td>15/03/2024</td>
+                                <td><span class="status status-review">En Revisión</span></td>
+                                <td><button class="action-btn">Ver</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Registro de Proyecto Section -->
+            <div id="registro" class="content-section hidden">
+                <div class="form-section">
+                    <h2>📝 Registro de Nuevo Proyecto de Investigación</h2>
+                    <form id="registroForm">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Título del Proyecto <span class="required">*</span></label>
+                                <input type="text" id="reg-titulo" placeholder="Ingrese el título del proyecto" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Tipo de Proyecto <span class="required">*</span></label>
+                                <select id="reg-tipo" required>
+                                    <option value="">Seleccione...</option>
+                                    <option value="Investigación Aplicada">Investigación Aplicada</option>
+                                    <option value="Investigación Básica">Investigación Básica</option>
+                                    <option value="Innovación Tecnológica">Innovación Tecnológica</option>
+                                    <option value="Desarrollo Experimental">Desarrollo Experimental</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Línea de Investigación <span class="required">*</span></label>
+                                <select id="reg-linea" required>
+                                    <option value="">Seleccione...</option>
+                                    <option>Tecnologías de la Información</option>
+                                    <option>Educación y Pedagogía</option>
+                                    <option>Desarrollo Sostenible</option>
+                                    <option>Innovación Empresarial</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Programa de Estudios <span class="required">*</span></label>
+                                <select id="reg-programa" required>
+                                    <option value="">Seleccione...</option>
+                                    <option>Desarrollo de Sistemas de Información</option>
+                                    <option>Contabilidad</option>
+                                    <option>Administración de Empresas</option>
+                                    <option>Enfermería Técnica</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Fecha de Inicio <span class="required">*</span></label>
+                                <input type="date" id="reg-fecha-inicio" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Fecha de Finalización <span class="required">*</span></label>
+                                <input type="date" id="reg-fecha-fin" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Objetivo General <span class="required">*</span></label>
+                            <textarea id="reg-objetivo-general" placeholder="Describa el objetivo general del proyecto" required></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Objetivos Específicos <span class="required">*</span></label>
+                            <textarea id="reg-objetivos-especificos" placeholder="Liste los objetivos específicos del proyecto" required></textarea>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Beneficiarios Directos</label>
+                                <input type="number" id="reg-beneficiarios-directos" placeholder="Cantidad aproximada">
+                            </div>
+                            <div class="form-group">
+                                <label>Beneficiarios Indirectos</label>
+                                <input type="number" id="reg-beneficiarios-indirectos" placeholder="Cantidad aproximada">
+                            </div>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Localización (Departamento)</label>
+                                <input type="text" id="reg-localizacion-depto" placeholder="Ej: Junín">
+                            </div>
+                            <div class="form-group">
+                                <label>Localización (Provincia/Distrito)</label>
+                                <input type="text" id="reg-localizacion-prov" placeholder="Ej: Huancayo">
+                            </div>
+                        </div>
+
+                        <div class="form-section" style="margin-top: 30px; background: #f8f9fa;">
+                            <h3 style="margin-bottom: 15px; color: #333;">Integrantes del Proyecto</h3>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Investigador Principal <span class="required">*</span></label>
+                                    <input type="text" id="reg-investigador-principal" placeholder="Nombre completo" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Co-investigador 1</label>
+                                    <input type="text" id="reg-co-investigador-1" placeholder="Nombre completo">
+                                </div>
+                                <div class="form-group">
+                                    <label>Co-investigador 2</label>
+                                    <input type="text" id="reg-co-investigador-2" placeholder="Nombre completo">
+                                </div>
+                                <div class="form-group">
+                                    <label>Co-investigador 3</label>
+                                    <input type="text" id="reg-co-investigador-3" placeholder="Nombre completo">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 20px;">
+                            <label>Documento del Proyecto (.docx) <span class="required">*</span></label>
+                            <div class="file-upload" onclick="document.getElementById('fileInput').click()">
+                                <input type="file" id="fileInput" accept=".docx,.pdf" required>
+                                <svg width="48" height="48" fill="none" stroke="#667eea" viewBox="0 0 24 24" style="margin: 0 auto 10px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                </svg>
+                                <p style="color: #667eea; font-weight: 600;">Haga clic para subir archivo</p>
+                                <p style="color: #888; font-size: 12px; margin-top: 5px;">Solo archivos .docx o .pdf (Máximo 10MB)</p>
+                                <p id="fileStatus" style="margin-top: 10px; color: #28a745; font-weight: 600;"></p>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 30px; display: flex; gap: 15px;">
+                            <button type="submit" class="btn btn-primary">
+                                <svg width="20" height="20" fill="white" viewBox="0 0 24 24">
+                                    <path d="M5 13l4 4L19 7"/>
+                                </svg>
+                                Registrar Proyecto
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="limpiarFormulario('registroForm')">
+                                Limpiar Formulario
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Perfil, Avances, Informe (mantener el HTML original pero solo mostrar ocultos) -->
+            <div id="perfil" class="content-section hidden">
+                <div class="form-section">
+                    <h2>📘 Perfil del Proyecto</h2>
+                    
+                    <div class="form-group">
+                        <label>Seleccionar Proyecto</label>
+                        <select id="selectProyectoPerfil" onchange="cargarDetallesProyecto()">
+                            <option value="">Seleccione un proyecto...</option>
+                        </select>
+                    </div>
+            
+                    <div id="detallesProyecto" style="display: none;">
+                        <div class="cards-grid" style="margin-top: 20px;">
+                            <div class="card">
+                                <div class="card-title">Estado del Proyecto</div>
+                                <div class="card-value" id="perfil-estado">-</div>
+                                <div class="card-footer">
+                                    <span class="card-badge badge-info" id="perfil-progreso">0% Completado</span>
+                                </div>
+                            </div>
+            
+                            <div class="card">
+                                <div class="card-title">Fecha de Inicio</div>
+                                <div class="card-value" style="font-size: 20px;" id="perfil-fecha-inicio">-</div>
+                            </div>
+            
+                            <div class="card">
+                                <div class="card-title">Fecha de Finalización</div>
+                                <div class="card-value" style="font-size: 20px;" id="perfil-fecha-fin">-</div>
+                            </div>
+            
+                            <div class="card">
+                                <div class="card-title">Duración</div>
+                                <div class="card-value" style="font-size: 24px;" id="perfil-duracion">-</div>
+                            </div>
+                        </div>
+            
+                        <div class="form-section" style="margin-top: 20px;">
+                            <h3>Información General</h3>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Código del Proyecto</label>
+                                    <input type="text" id="perfil-codigo" readonly>
+                                </div>
+                                <div class="form-group">
+                                    <label>Tipo de Proyecto</label>
+                                    <input type="text" id="perfil-tipo" readonly>
+                                </div>
+                                <div class="form-group">
+                                    <label>Línea de Investigación</label>
+                                    <input type="text" id="perfil-linea" readonly>
+                                </div>
+                                <div class="form-group">
+                                    <label>Programa de Estudios</label>
+                                    <input type="text" id="perfil-programa" readonly>
+                                </div>
+                            </div>
+            
+                            <div class="form-group">
+                                <label>Título del Proyecto</label>
+                                <textarea id="perfil-titulo" readonly rows="2"></textarea>
+                            </div>
+            
+                            <div class="form-group">
+                                <label>Objetivo General</label>
+                                <textarea id="perfil-objetivo" readonly rows="3"></textarea>
+                            </div>
+            
+                            <div class="form-group">
+                                <label>Objetivos Específicos</label>
+                                <textarea id="perfil-objetivos-esp" readonly rows="4"></textarea>
+                            </div>
+                        </div>
+            
+                        <div class="form-section" style="margin-top: 20px;">
+                            <h3>Equipo de Investigación</h3>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Investigador Principal</label>
+                                    <input type="text" id="perfil-investigador" readonly>
+                                </div>
+                            </div>
+                            <div id="perfil-coinvestigadores"></div>
+                        </div>
+            
+                        <div class="form-section" style="margin-top: 20px;">
+                            <h3>Localización y Beneficiarios</h3>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Departamento</label>
+                                    <input type="text" id="perfil-depto" readonly>
+                                </div>
+                                <div class="form-group">
+                                    <label>Provincia/Distrito</label>
+                                    <input type="text" id="perfil-prov" readonly>
+                                </div>
+                                <div class="form-group">
+                                    <label>Beneficiarios Directos</label>
+                                    <input type="number" id="perfil-benef-directos" readonly>
+                                </div>
+                                <div class="form-group">
+                                    <label>Beneficiarios Indirectos</label>
+                                    <input type="number" id="perfil-benef-indirectos" readonly>
+                                </div>
+                            </div>
+                        </div>
+            
+                        <div class="timeline" style="margin-top: 30px;">
+                            <h3 style="margin-bottom: 20px;">Cronología del Proyecto</h3>
+                            <div id="timelineProyecto"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="avances" class="content-section hidden">
+                <div class="form-section">
+                    <h2>📆 Avances Periódicos del Proyecto</h2>
+                    
+                    <div class="form-group">
+                        <label>Seleccionar Proyecto</label>
+                        <select id="selectProyectoAvances" onchange="cargarAvancesProyecto()">
+                            <option value="">Seleccione un proyecto...</option>
+                        </select>
+                    </div>
+            
+                    <div id="contenedorAvances" style="display: none;">
+                        <div class="cards-grid" style="margin-top: 20px;">
+                            <div class="card">
+                                <div class="card-title">Avances Registrados</div>
+                                <div class="card-value" id="stat-avances-total">0</div>
+                            </div>
+                            <div class="card">
+                                <div class="card-title">Último Avance</div>
+                                <div class="card-value" style="font-size: 20px;" id="stat-ultimo-avance">-</div>
+                            </div>
+                            <div class="card">
+                                <div class="card-title">Progreso Global</div>
+                                <div class="card-value" id="stat-progreso-global">0%</div>
+                            </div>
+                        </div>
+            
+                        <!-- Formulario para nuevo avance (solo para docentes) -->
+                        <div id="formNuevoAvance" class="form-section" style="margin-top: 20px; display: none;">
+                            <h3>➕ Registrar Nuevo Avance</h3>
+                            <form id="formAvance">
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label>Período <span class="required">*</span></label>
+                                        <select id="avance-periodo" required>
+                                            <option value="">Seleccione...</option>
+                                            <option value="Mes 1">Mes 1</option>
+                                            <option value="Mes 2">Mes 2</option>
+                                            <option value="Mes 3">Mes 3</option>
+                                            <option value="Trimestre 1">Trimestre 1</option>
+                                            <option value="Trimestre 2">Trimestre 2</option>
+                                            <option value="Trimestre 3">Trimestre 3</option>
+                                            <option value="Trimestre 4">Trimestre 4</option>
+                                            <option value="Semestre 1">Semestre 1</option>
+                                            <option value="Semestre 2">Semestre 2</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Fecha del Avance <span class="required">*</span></label>
+                                        <input type="date" id="avance-fecha" required>
+                                    </div>
+                                </div>
+            
+                                <div class="form-group">
+                                    <label>Porcentaje de Avance (%) <span class="required">*</span></label>
+                                    <input type="number" id="avance-porcentaje" min="0" max="100" placeholder="0-100" required>
+                                </div>
+            
+                                <div class="form-group">
+                                    <label>Actividades Realizadas <span class="required">*</span></label>
+                                    <textarea id="avance-actividades" rows="4" placeholder="Describa las actividades realizadas en este período..." required></textarea>
+                                </div>
+            
+                                <div class="form-group">
+                                    <label>Resultados Obtenidos <span class="required">*</span></label>
+                                    <textarea id="avance-resultados" rows="4" placeholder="Describa los resultados obtenidos..." required></textarea>
+                                </div>
+            
+                                <div class="form-group">
+                                    <label>Dificultades Encontradas</label>
+                                    <textarea id="avance-dificultades" rows="3" placeholder="Opcional: Describa las dificultades o problemas encontrados..."></textarea>
+                                </div>
+            
+                                <div class="form-group">
+                                    <label>Observaciones Adicionales</label>
+                                    <textarea id="avance-observaciones" rows="3" placeholder="Opcional: Comentarios o información adicional..."></textarea>
+                                </div>
+            
+                                <div class="form-group">
+                                    <label>Documento de Evidencia (.pdf, .docx)</label>
+                                    <div class="file-upload" onclick="document.getElementById('avanceFileInput').click()">
+                                        <input type="file" id="avanceFileInput" accept=".pdf,.docx">
+                                        <svg width="48" height="48" fill="none" stroke="#667eea" viewBox="0 0 24 24" style="margin: 0 auto 10px;">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                        </svg>
+                                        <p style="color: #667eea; font-weight: 600;">Haga clic para subir evidencia</p>
+                                        <p style="color: #888; font-size: 12px; margin-top: 5px;">Opcional: Máximo 10MB</p>
+                                        <p id="avanceFileStatus" style="margin-top: 10px; color: #28a745; font-weight: 600;"></p>
+                                    </div>
+                                </div>
+            
+                                <div style="margin-top: 20px; display: flex; gap: 15px;">
+                                    <button type="submit" class="btn btn-primary">
+                                        <svg width="20" height="20" fill="white" viewBox="0 0 24 24">
+                                            <path d="M5 13l4 4L19 7"/>
+                                        </svg>
+                                        Guardar Avance
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" onclick="limpiarFormulario('formAvance')">
+                                        Limpiar
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+            
+                        <!-- Lista de avances registrados -->
+                        <div class="table-container" style="margin-top: 20px;">
+                            <h3 style="margin-bottom: 15px;">📋 Historial de Avances</h3>
+                            <table id="tablaAvances">
+                                <thead>
+                                    <tr>
+                                        <th>Período</th>
+                                        <th>Fecha</th>
+                                        <th>Porcentaje</th>
+                                        <th>Actividades</th>
+                                        <th>Estado</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="6" style="text-align: center; padding: 30px; color: #888;">
+                                            No hay avances registrados para este proyecto
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="informe" class="content-section hidden">
+                <div class="form-section">
+                    <h2>📋 Informe Final del Proyecto</h2>
+                    
+                    <div class="form-group">
+                        <label>Seleccionar Proyecto</label>
+                        <select id="selectProyectoInforme" onchange="cargarInformeProyecto()">
+                            <option value="">Seleccione un proyecto...</option>
+                        </select>
+                    </div>
+            
+                    <div id="contenedorInforme" style="display: none;">
+                        <!-- Estadísticas del informe -->
+                        <div class="cards-grid" style="margin-top: 20px;">
+                            <div class="card">
+                                <div class="card-title">Estado del Informe</div>
+                                <div class="card-value" style="font-size: 20px;" id="informe-estado">Sin iniciar</div>
+                            </div>
+                            <div class="card">
+                                <div class="card-title">Progreso Global</div>
+                                <div class="card-value" id="informe-progreso">0%</div>
+                            </div>
+                            <div class="card">
+                                <div class="card-title">Fecha de Entrega</div>
+                                <div class="card-value" style="font-size: 20px;" id="informe-fecha-entrega">-</div>
+                            </div>
+                            <div class="card">
+                                <div class="card-title">Días Restantes</div>
+                                <div class="card-value" id="informe-dias-restantes">-</div>
+                            </div>
+                        </div>
+            
+                        <!-- Formulario de Informe Final (solo para docentes) -->
+                        <div id="formInformeFinal" class="form-section" style="margin-top: 20px; display: none;">
+                            <h3>📝 Registro de Informe Final</h3>
+                            <form id="formInforme">
+                                <div class="form-group">
+                                    <label>Título del Informe <span class="required">*</span></label>
+                                    <input type="text" id="informe-titulo" placeholder="Título completo del informe final" required>
+                                </div>
+            
+                                <div class="form-group">
+                                    <label>Resumen Ejecutivo <span class="required">*</span></label>
+                                    <textarea id="informe-resumen" rows="5" 
+                                        placeholder="Resumen ejecutivo del proyecto (máximo 500 palabras)..." required></textarea>
+                                    <small style="color: #888;">Debe incluir: objetivos, metodología, principales resultados y conclusiones</small>
+                                </div>
+            
+                                <div class="form-section" style="background: #f8f9fa; margin-top: 20px;">
+                                    <h4 style="margin-bottom: 15px;">🎯 Cumplimiento de Objetivos</h4>
+                                    
+                                    <div class="form-group">
+                                        <label>Objetivo General - Nivel de Cumplimiento <span class="required">*</span></label>
+                                        <select id="informe-obj-general-cumplimiento" required>
+                                            <option value="">Seleccione...</option>
+                                            <option value="100">100% - Totalmente cumplido</option>
+                                            <option value="75">75% - Mayormente cumplido</option>
+                                            <option value="50">50% - Parcialmente cumplido</option>
+                                            <option value="25">25% - Mínimamente cumplido</option>
+                                            <option value="0">0% - No cumplido</option>
+                                        </select>
+                                    </div>
+            
+                                    <div class="form-group">
+                                        <label>Descripción del Cumplimiento del Objetivo General <span class="required">*</span></label>
+                                        <textarea id="informe-obj-general-descripcion" rows="4" 
+                                            placeholder="Explique en detalle cómo se cumplió o no el objetivo general..." required></textarea>
+                                    </div>
+            
+                                    <div class="form-group">
+                                        <label>Objetivos Específicos - Nivel de Cumplimiento Global <span class="required">*</span></label>
+                                        <select id="informe-obj-especificos-cumplimiento" required>
+                                            <option value="">Seleccione...</option>
+                                            <option value="100">100% - Todos cumplidos</option>
+                                            <option value="75">75% - La mayoría cumplidos</option>
+                                            <option value="50">50% - La mitad cumplidos</option>
+                                            <option value="25">25% - Pocos cumplidos</option>
+                                            <option value="0">0% - Ninguno cumplido</option>
+                                        </select>
+                                    </div>
+            
+                                    <div class="form-group">
+                                        <label>Detalle de Cumplimiento de Objetivos Específicos <span class="required">*</span></label>
+                                        <textarea id="informe-obj-especificos-detalle" rows="5" 
+                                            placeholder="Liste cada objetivo específico y su nivel de cumplimiento..." required></textarea>
+                                    </div>
+                                </div>
+            
+                                <div class="form-section" style="background: #f8f9fa; margin-top: 20px;">
+                                    <h4 style="margin-bottom: 15px;">📊 Resultados y Productos</h4>
+                                    
+                                    <div class="form-group">
+                                        <label>Principales Resultados Obtenidos <span class="required">*</span></label>
+                                        <textarea id="informe-resultados" rows="6" 
+                                            placeholder="Describa los principales resultados obtenidos durante el proyecto..." required></textarea>
+                                    </div>
+            
+                                    <div class="form-group">
+                                        <label>Productos Entregables <span class="required">*</span></label>
+                                        <textarea id="informe-productos" rows="5" 
+                                            placeholder="Liste los productos entregables: artículos, software, capacitaciones, etc..." required></textarea>
+                                    </div>
+            
+                                    <div class="form-grid">
+                                        <div class="form-group">
+                                            <label>Número de Publicaciones</label>
+                                            <input type="number" id="informe-num-publicaciones" min="0" value="0">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Número de Ponencias</label>
+                                            <input type="number" id="informe-num-ponencias" min="0" value="0">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Número de Capacitaciones</label>
+                                            <input type="number" id="informe-num-capacitaciones" min="0" value="0">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Otras Actividades</label>
+                                            <input type="number" id="informe-num-otras" min="0" value="0">
+                                        </div>
+                                    </div>
+                                </div>
+            
+                                <div class="form-section" style="background: #f8f9fa; margin-top: 20px;">
+                                    <h4 style="margin-bottom: 15px;">👥 Impacto y Beneficiarios</h4>
+                                    
+                                    <div class="form-group">
+                                        <label>Descripción del Impacto <span class="required">*</span></label>
+                                        <textarea id="informe-impacto" rows="5" 
+                                            placeholder="Describa el impacto del proyecto en la comunidad, institución o sector..." required></textarea>
+                                    </div>
+            
+                                    <div class="form-grid">
+                                        <div class="form-group">
+                                            <label>Beneficiarios Directos Alcanzados</label>
+                                            <input type="number" id="informe-benef-directos-real" min="0" placeholder="Cantidad real">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Beneficiarios Indirectos Alcanzados</label>
+                                            <input type="number" id="informe-benef-indirectos-real" min="0" placeholder="Cantidad real">
+                                        </div>
+                                    </div>
+            
+                                    <div class="form-group">
+                                        <label>Testimonios o Evidencias de Impacto</label>
+                                        <textarea id="informe-testimonios" rows="4" 
+                                            placeholder="Incluya testimonios, comentarios o evidencias del impacto del proyecto..."></textarea>
+                                    </div>
+                                </div>
+            
+                                <div class="form-section" style="background: #f8f9fa; margin-top: 20px;">
+                                    <h4 style="margin-bottom: 15px;">⚠️ Dificultades y Lecciones Aprendidas</h4>
+                                    
+                                    <div class="form-group">
+                                        <label>Principales Dificultades Encontradas <span class="required">*</span></label>
+                                        <textarea id="informe-dificultades" rows="5" 
+                                            placeholder="Describa las principales dificultades, obstáculos o limitaciones..." required></textarea>
+                                    </div>
+            
+                                    <div class="form-group">
+                                        <label>Cómo se Superaron las Dificultades</label>
+                                        <textarea id="informe-soluciones" rows="4" 
+                                            placeholder="Explique las estrategias utilizadas para superar las dificultades..."></textarea>
+                                    </div>
+            
+                                    <div class="form-group">
+                                        <label>Lecciones Aprendidas <span class="required">*</span></label>
+                                        <textarea id="informe-lecciones" rows="5" 
+                                            placeholder="¿Qué aprendió del proyecto? ¿Qué haría diferente?" required></textarea>
+                                    </div>
+                                </div>
+            
+                                <div class="form-section" style="background: #f8f9fa; margin-top: 20px;">
+                                    <h4 style="margin-bottom: 15px;">🔮 Conclusiones y Recomendaciones</h4>
+                                    
+                                    <div class="form-group">
+                                        <label>Conclusiones Generales <span class="required">*</span></label>
+                                        <textarea id="informe-conclusiones" rows="6" 
+                                            placeholder="Principales conclusiones del proyecto..." required></textarea>
+                                    </div>
+            
+                                    <div class="form-group">
+                                        <label>Recomendaciones <span class="required">*</span></label>
+                                        <textarea id="informe-recomendaciones" rows="5" 
+                                            placeholder="Recomendaciones para futuros proyectos o para dar continuidad..." required></textarea>
+                                    </div>
+            
+                                    <div class="form-group">
+                                        <label>Sostenibilidad del Proyecto</label>
+                                        <textarea id="informe-sostenibilidad" rows="4" 
+                                            placeholder="¿Cómo se puede dar continuidad o sostenibilidad a los resultados?"></textarea>
+                                    </div>
+                                </div>
+            
+                                <div class="form-section" style="background: #f8f9fa; margin-top: 20px;">
+                                    <h4 style="margin-bottom: 15px;">💰 Aspectos Presupuestales</h4>
+                                    
+                                    <div class="form-grid">
+                                        <div class="form-group">
+                                            <label>Presupuesto Aprobado (S/)</label>
+                                            <input type="number" id="informe-presupuesto-aprobado" step="0.01" min="0">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Presupuesto Ejecutado (S/)</label>
+                                            <input type="number" id="informe-presupuesto-ejecutado" step="0.01" min="0">
+                                        </div>
+                                    </div>
+            
+                                    <div class="form-group">
+                                        <label>Observaciones Presupuestales</label>
+                                        <textarea id="informe-presupuesto-obs" rows="3" 
+                                            placeholder="Explique variaciones significativas en el presupuesto..."></textarea>
+                                    </div>
+                                </div>
+            
+                                <div class="form-group" style="margin-top: 20px;">
+                                    <label>Documento del Informe Final (.pdf, .docx) <span class="required">*</span></label>
+                                    <div class="file-upload" onclick="document.getElementById('informeFileInput').click()">
+                                        <input type="file" id="informeFileInput" accept=".pdf,.docx" required>
+                                        <svg width="48" height="48" fill="none" stroke="#667eea" viewBox="0 0 24 24" style="margin: 0 auto 10px;">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                        </svg>
+                                        <p style="color: #667eea; font-weight: 600;">Haga clic para subir el informe final</p>
+                                        <p style="color: #888; font-size: 12px; margin-top: 5px;">Formato APA 7ma edición - Máximo 20MB</p>
+                                        <p id="informeFileStatus" style="margin-top: 10px; color: #28a745; font-weight: 600;"></p>
+                                    </div>
+                                </div>
+            
+                                <div class="form-group">
+                                    <label>Anexos Adicionales (Opcional - .zip, .rar)</label>
+                                    <div class="file-upload" onclick="document.getElementById('informeAnexosInput').click()">
+                                        <input type="file" id="informeAnexosInput" accept=".zip,.rar">
+                                        <svg width="40" height="40" fill="none" stroke="#888" viewBox="0 0 24 24" style="margin: 0 auto 10px;">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                        </svg>
+                                        <p style="color: #888; font-weight: 600;">Archivos complementarios (imágenes, datos, etc.)</p>
+                                        <p style="color: #888; font-size: 12px; margin-top: 5px;">Máximo 50MB</p>
+                                        <p id="informeAnexosStatus" style="margin-top: 10px; color: #28a745; font-weight: 600;"></p>
+                                    </div>
+                                </div>
+            
+                                <div class="form-group">
+                                    <label>
+                                        <input type="checkbox" id="informe-declaracion" required style="width: auto; margin-right: 10px;">
+                                        Declaro que la información presentada en este informe es veraz y completa
+                                    </label>
+                                </div>
+            
+                                <div style="margin-top: 30px; display: flex; gap: 15px;">
+                                    <button type="submit" class="btn btn-primary">
+                                        <svg width="20" height="20" fill="white" viewBox="0 0 24 24">
+                                            <path d="M5 13l4 4L19 7"/>
+                                        </svg>
+                                        Enviar Informe Final
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" onclick="previsualizarInforme()">
+                                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                            <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                        </svg>
+                                        Previsualizar
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" onclick="limpiarFormulario('formInforme')">
+                                        Limpiar
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+            
+                        <!-- Historial de Informes -->
+                        <div class="table-container" style="margin-top: 20px;">
+                            <h3 style="margin-bottom: 15px;">📚 Historial de Informes</h3>
+                            <table id="tablaInformes">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha de Entrega</th>
+                                        <th>Título</th>
+                                        <th>Cumplimiento</th>
+                                        <th>Estado</th>
+                                        <th>Evaluador</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="6" style="text-align: center; padding: 30px; color: #888;">
+                                            No hay informes registrados para este proyecto
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Evaluación Section -->
+            <div id="evaluacion" class="content-section hidden">
+                <div class="form-section">
+                    <h2>🎯 Sistema de Evaluación de Proyectos</h2>
+
+                    <div class="form-group">
+                        <label>Seleccionar Proyecto a Evaluar <span class="required">*</span></label>
+                        <select id="selectProyectoEval" required>
+                            <option value="">Seleccione un proyecto...</option>
+                            <option value="1">INV-2024-001 - Sistema de Gestión Académica con IA</option>
+                            <option value="2">INV-2024-002 - Plataforma de Aprendizaje Adaptativo</option>
+                            <option value="3">INV-2024-003 - Análisis de Datos Educativos</option>
+                        </select>
+                    </div>
+
+                    <div class="table-container" style="margin-top: 20px;">
+                        <h3 style="margin-bottom: 15px;">📋 Rúbrica de Evaluación Digital</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th style="width: 30%;">Criterio</th>
+                                    <th style="width: 15%;">Excelente (5)</th>
+                                    <th style="width: 15%;">Bueno (4)</th>
+                                    <th style="width: 15%;">Regular (3)</th>
+                                    <th style="width: 15%;">Deficiente (2)</th>
+                                    <th style="width: 10%;">Puntuación</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Planteamiento del Problema</strong></td>
+                                    <td><input type="radio" name="criterio1" value="5" onchange="actualizarPuntuacion(1, 5)"></td>
+                                    <td><input type="radio" name="criterio1" value="4" onchange="actualizarPuntuacion(1, 4)"></td>
+                                    <td><input type="radio" name="criterio1" value="3" onchange="actualizarPuntuacion(1, 3)"></td>
+                                    <td><input type="radio" name="criterio1" value="2" onchange="actualizarPuntuacion(1, 2)"></td>
+                                    <td><input type="number" id="punt1" min="0" max="5" value="0" readonly style="width: 60px; padding: 5px;"></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Marco Teórico</strong></td>
+                                    <td><input type="radio" name="criterio2" value="5" onchange="actualizarPuntuacion(2, 5)"></td>
+                                    <td><input type="radio" name="criterio2" value="4" onchange="actualizarPuntuacion(2, 4)"></td>
+                                    <td><input type="radio" name="criterio2" value="3" onchange="actualizarPuntuacion(2, 3)"></td>
+                                    <td><input type="radio" name="criterio2" value="2" onchange="actualizarPuntuacion(2, 2)"></td>
+                                    <td><input type="number" id="punt2" min="0" max="5" value="0" readonly style="width: 60px; padding: 5px;"></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Metodología</strong></td>
+                                    <td><input type="radio" name="criterio3" value="5" onchange="actualizarPuntuacion(3, 5)"></td>
+                                    <td><input type="radio" name="criterio3" value="4" onchange="actualizarPuntuacion(3, 4)"></td>
+                                    <td><input type="radio" name="criterio3" value="3" onchange="actualizarPuntuacion(3, 3)"></td>
+                                    <td><input type="radio" name="criterio3" value="2" onchange="actualizarPuntuacion(3, 2)"></td>
+                                    <td><input type="number" id="punt3" min="0" max="5" value="0" readonly style="width: 60px; padding: 5px;"></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Resultados y Análisis</strong></td>
+                                    <td><input type="radio" name="criterio4" value="5" onchange="actualizarPuntuacion(4, 5)"></td>
+                                    <td><input type="radio" name="criterio4" value="4" onchange="actualizarPuntuacion(4, 4)"></td>
+                                    <td><input type="radio" name="criterio4" value="3" onchange="actualizarPuntuacion(4, 3)"></td>
+                                    <td><input type="radio" name="criterio4" value="2" onchange="actualizarPuntuacion(4, 2)"></td>
+                                    <td><input type="number" id="punt4" min="0" max="5" value="0" readonly style="width: 60px; padding: 5px;"></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Conclusiones y Recomendaciones</strong></td>
+                                    <td><input type="radio" name="criterio5" value="5" onchange="actualizarPuntuacion(5, 5)"></td>
+                                    <td><input type="radio" name="criterio5" value="4" onchange="actualizarPuntuacion(5, 4)"></td>
+                                    <td><input type="radio" name="criterio5" value="3" onchange="actualizarPuntuacion(5, 3)"></td>
+                                    <td><input type="radio" name="criterio5" value="2" onchange="actualizarPuntuacion(5, 2)"></td>
+                                    <td><input type="number" id="punt5" min="0" max="5" value="0" readonly style="width: 60px; padding: 5px;"></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Formato APA 7ma</strong></td>
+                                    <td><input type="radio" name="criterio6" value="5" onchange="actualizarPuntuacion(6, 5)"></td>
+                                    <td><input type="radio" name="criterio6" value="4" onchange="actualizarPuntuacion(6, 4)"></td>
+                                    <td><input type="radio" name="criterio6" value="3" onchange="actualizarPuntuacion(6, 3)"></td>
+                                    <td><input type="radio" name="criterio6" value="2" onchange="actualizarPuntuacion(6, 2)"></td>
+                                    <td><input type="number" id="punt6" min="0" max="5" value="0" readonly style="width: 60px; padding: 5px;"></td>
+                                </tr>
+                                <tr style="background: #f8f9fa; font-weight: bold;">
+                                    <td colspan="5" style="text-align: right;">PUNTUACIÓN TOTAL:</td>
+                                    <td><input type="number" id="puntTotal" value="0" readonly style="width: 60px; padding: 5px; font-weight: bold; background: #e9ecef;"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 30px;">
+                        <label>Comentarios y Observaciones <span class="required">*</span></label>
+                        <textarea id="comentariosEval" required rows="6"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Recomendaciones</label>
+                        <textarea id="recomendacionesEval" rows="4"></textarea>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Decisión Final <span class="required">*</span></label>
+                            <select id="decisionFinal" required>
+                                <option value="">Seleccione...</option>
+                                <option>Aprobado</option>
+                                <option>Aprobado con Observaciones</option>
+                                <option>Requiere Correcciones</option>
+                                <option>No Aprobado</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Fecha de Evaluación</label>
+                            <input type="date" id="fechaEval" readonly>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 30px; display: flex; gap: 15px;">
+                        <button class="btn btn-primary" onclick="guardarEvaluacion()">
+                            <svg width="20" height="20" fill="white" viewBox="0 0 24 24">
+                                <path d="M5 13l4 4L19 7"/>
+                            </svg>
+                            Guardar Evaluación
+                        </button>
+                        <button class="btn btn-secondary" onclick="generarPDFEvaluacion()">
+                            <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                            Generar PDF
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-container" style="margin-top: 20px;">
+                    <h2 style="margin-bottom: 20px; color: #333;">Historial de Evaluaciones</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Proyecto</th>
+                                <th>Evaluador</th>
+                                <th>Fecha</th>
+                                <th>Puntuación</th>
+                                <th>Decisión</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>INV-2024-001</td>
+                                <td>Dr. García Mendoza</td>
+                                <td>15/10/2024</td>
+                                <td><strong>28/30</strong></td>
+                                <td><span class="status status-approved">Aprobado</span></td>
+                                <td><button class="action-btn">Ver detalle</button></td>
+                            </tr>
+                            <tr>
+                                <td>INV-2024-002</td>
+                                <td>Mg. López Torres</td>
+                                <td>18/10/2024</td>
+                                <td><strong>25/30</strong></td>
+                                <td><span class="status status-review">Con observaciones</span></td>
+                                <td><button class="action-btn">Ver detalle</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Resoluciones Section -->
+            <div id="resoluciones" class="content-section hidden">
+                <div class="form-section">
+                    <h2>🏛️ Resoluciones y Archivo</h2>
+                    <p>Contenido original aquí...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // ============================================
+// FUNCIONES PARA INFORME FINAL
+// ============================================
+
+// Cargar datos de la sección Informe Final
+async function cargarInformeFinal() {
+    const selectProyecto = document.getElementById('selectProyectoInforme');
+    if (!selectProyecto) return;
+    
+    // Limpiar y cargar proyectos
+    selectProyecto.innerHTML = '<option value="">Seleccione un proyecto...</option>';
+    
+    const proyectos = currentUser.role === 'Docente' 
+        ? projectsData.filter(p => p.docente_email === currentUser.email)
+        : projectsData;
+    
+    proyectos.forEach(p => {
+        const option = document.createElement('option');
+        option.value = p.id;
+        option.textContent = `${p.codigo} - ${p.titulo}`;
+        selectProyecto.appendChild(option);
+    });
+    
+    // Mostrar formulario solo para docentes
+    const formInforme = document.getElementById('formInformeFinal');
+    if (formInforme) {
+        formInforme.style.display = currentUser.role === 'Docente' ? 'block' : 'none';
+    }
+}
+
+// Cargar detalles del informe del proyecto seleccionado
+async function cargarInformeProyecto() {
+    const selectProyecto = document.getElementById('selectProyectoInforme');
+    const proyectoId = selectProyecto?.value;
+    
+    const contenedor = document.getElementById('contenedorInforme');
+    if (!contenedor) return;
+    
+    if (!proyectoId) {
+        contenedor.style.display = 'none';
+        return;
+    }
+    
+    contenedor.style.display = 'block';
+    
+    // Buscar proyecto
+    const proyecto = projectsData.find(p => p.id === proyectoId);
+    if (!proyecto) return;
+    
+    // Calcular días restantes
+    const fechaFin = new Date(proyecto.fecha_fin);
+    const hoy = new Date();
+    const diasRestantes = Math.ceil((fechaFin - hoy) / (1000 * 60 * 60 * 24));
+    
+    // Actualizar estadísticas
+    document.getElementById('informe-estado').textContent = 
+        proyecto.estado === 'Finalizado' ? 'Completado' : 'En proceso';
+    document.getElementById('informe-progreso').textContent = 
+        (proyecto.porcentaje_avance || 0) + '%';
+    document.getElementById('informe-fecha-entrega').textContent = 
+        fechaFin.toLocaleDateString('es-ES');
+    document.getElementById('informe-dias-restantes').textContent = 
+        diasRestantes > 0 ? diasRestantes + ' días' : 'Vencido';
+    
+    // Cargar informes existentes
+    await cargarHistorialInformes(proyectoId);
+}
+
+// Cargar historial de informes
+async function cargarHistorialInformes(proyectoId) {
+    const tbody = document.querySelector('#tablaInformes tbody');
+    if (!tbody) return;
+    
+    try {
+        const { data: informes, error } = await supabaseClient
+            .from('informes_finales')
+            .select('*')
+            .eq('proyecto_id', proyectoId)
+            .order('fecha_entrega', { ascending: false });
+        
+        if (error) throw error;
+        
+        if (!informes || informes.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 30px; color: #888;">
+                        No hay informes registrados para este proyecto
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        tbody.innerHTML = informes.map(inf => `
+            <tr>
+                <td>${new Date(inf.fecha_entrega).toLocaleDateString('es-ES')}</td>
+                <td>${inf.titulo}</td>
+                <td><strong>${inf.cumplimiento_objetivo_general}%</strong></td>
+                <td><span class="status ${getStatusClass(inf.estado)}">${inf.estado}</span></td>
+                <td>${inf.evaluador_nombre || '-'}</td>
+                <td>
+                    <button class="action-btn" onclick="verDetalleInforme('${inf.id}')">Ver</button>
+                    ${inf.documento_url ? `<button class="action-btn" onclick="descargarInforme('${inf.documento_url}')">Descargar</button>` : ''}
+                </td>
+            </tr>
+        `).join('');
+        
+    } catch (error) {
+        console.error('Error cargando informes:', error);
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 30px; color: #ff4444;">
+                    Error al cargar informes
+                </td>
+            </tr>
+        `;
+    }
+}
+
+// Función auxiliar para obtener clase de estado
+function getStatusClass(estado) {
+    const clases = {
+        'Enviado': 'status-pending',
+        'En Revisión': 'status-review',
+        'Aprobado': 'status-approved',
+        'Observado': 'status-pending'
+    };
+    return clases[estado] || 'status-pending';
+}
+
+// Manejar envío del formulario de informe
+document.getElementById('formInforme')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const proyectoId = document.getElementById('selectProyectoInforme').value;
+    if (!proyectoId) {
+        mostrarToast('Seleccione un proyecto primero', 'warning');
+        return;
+    }
+    
+    const fileInput = document.getElementById('informeFileInput');
+    if (!fileInput.files[0]) {
+        mostrarToast('Debe adjuntar el documento del informe', 'warning');
+        return;
+    }
+    
+    const declaracion = document.getElementById('informe-declaracion').checked;
+    if (!declaracion) {
+        mostrarToast('Debe aceptar la declaración de veracidad', 'warning');
+        return;
+    }
+    
+    try {
+        const informeData = {
+            proyecto_id: proyectoId,
+            docente_email: currentUser.email,
+            titulo: document.getElementById('informe-titulo').value,
+            resumen_ejecutivo: document.getElementById('informe-resumen').value,
+            cumplimiento_objetivo_general: parseInt(document.getElementById('informe-obj-general-cumplimiento').value),
+            descripcion_obj_general: document.getElementById('informe-obj-general-descripcion').value,
+            cumplimiento_objetivos_especificos: parseInt(document.getElementById('informe-obj-especificos-cumplimiento').value),
+            detalle_obj_especificos: document.getElementById('informe-obj-especificos-detalle').value,
+            resultados: document.getElementById('informe-resultados').value,
+            productos: document.getElementById('informe-productos').value,
+            num_publicaciones: parseInt(document.getElementById('informe-num-publicaciones').value || 0),
+            num_ponencias: parseInt(document.getElementById('informe-num-ponencias').value || 0),
+            num_capacitaciones: parseInt(document.getElementById('informe-num-capacitaciones').value || 0),
+            num_otras_actividades: parseInt(document.getElementById('informe-num-otras').value || 0),
+            impacto: document.getElementById('informe-impacto').value,
+            beneficiarios_directos_real: parseInt(document.getElementById('informe-benef-directos-real').value || 0),
+            beneficiarios_indirectos_real: parseInt(document.getElementById('informe-benef-indirectos-real').value || 0),
+            testimonios: document.getElementById('informe-testimonios').value,
+            dificultades: document.getElementById('informe-dificultades').value,
+            soluciones: document.getElementById('informe-soluciones').value,
+            lecciones_aprendidas: document.getElementById('informe-lecciones').value,
+            conclusiones: document.getElementById('informe-conclusiones').value,
+            recomendaciones: document.getElementById('informe-recomendaciones').value,
+            sostenibilidad: document.getElementById('informe-sostenibilidad').value,
+            presupuesto_aprobado: parseFloat(document.getElementById('informe-presupuesto-aprobado').value || 0),
+            presupuesto_ejecutado: parseFloat(document.getElementById('informe-presupuesto-ejecutado').value || 0),
+            presupuesto_observaciones: document.getElementById('informe-presupuesto-obs').value,
+            estado: 'Enviado',
+            fecha_entrega: new Date().toISOString()
+        };
+        
+        const { data, error } = await supabaseClient
+            .from('informes_finales')
+            .insert([informeData])
+            .select();
+        
+        if (error) throw error;
+        
+        mostrarToast('✅ Informe final enviado correctamente', 'success');
+        
+        // Limpiar formulario y recargar
+        this.reset();
+        document.getElementById('informeFileStatus').textContent = '';
+        await cargarInformeProyecto();
+        
+    } catch (error) {
+        console.error('Error guardando informe:', error);
+        mostrarToast('Error al guardar el informe: ' + error.message, 'error');
+    }
+});
+
+// Manejar archivo del informe
+document.getElementById('informeFileInput')?.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    const statusDiv = document.getElementById('informeFileStatus');
+    
+    if (file) {
+        const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+        const maxSize = 20;
+        
+        if (sizeMB > maxSize) {
+            mostrarToast(`Archivo muy grande (${sizeMB}MB). Máximo ${maxSize}MB`, 'warning');
+            e.target.value = '';
+            statusDiv.textContent = '';
+            return;
+        }
+        
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (!['docx', 'pdf'].includes(ext)) {
+            mostrarToast('Solo se permiten archivos .docx o .pdf', 'warning');
+            e.target.value = '';
+            statusDiv.textContent = '';
+            return;
+        }
+        
+        statusDiv.textContent = `✅ ${file.name} (${sizeMB} MB)`;
+    } else {
+        statusDiv.textContent = '';
+    }
+});
+
+// Manejar anexos
+document.getElementById('informeAnexosInput')?.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    const statusDiv = document.getElementById('informeAnexosStatus');
+    
+    if (file) {
+        const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+        const maxSize = 50;
+        
+        if (sizeMB > maxSize) {
+            mostrarToast(`Archivo muy grande (${sizeMB}MB). Máximo ${maxSize}MB`, 'warning');
+            e.target.value = '';
+            statusDiv.textContent = '';
+            return;
+        }
+        
+        statusDiv.textContent = `✅ ${file.name} (${sizeMB} MB)`;
+    } else {
+        statusDiv.textContent = '';
+    }
+});
+
+// Previsualizar informe
+function previsualizarInforme() {
+    const titulo = document.getElementById('informe-titulo').value;
+    const resumen = document.getElementById('informe-resumen').value;
+    
+    if (!titulo || !resumen) {
+        mostrarToast('Complete al menos el título y resumen para previsualizar', 'warning');
+        return;
+    }
+    
+    // Crear ventana de previsualización
+    const preview = window.open('', 'Previsualización', 'width=800,height=600');
+    preview.document.write(`
+        <html>
+        <head>
+            <title>Previsualización - Informe Final</title>
+            <style>
+                body { font-family: Arial, sans-serif; padding: 40px; line-height: 1.6; }
+                h1 { color: #667eea; border-bottom: 2px solid #667eea; padding-bottom: 10px; }
+                h2 { color: #333; margin-top: 30px; }
+                .section { margin: 20px 0; }
+                .label { font-weight: bold; color: #555; }
+            </style>
+        </head>
+        <body>
+            <h1>INFORME FINAL DEL PROYECTO</h1>
+            <div class="section">
+                <p class="label">Título:</p>
+                <p>${titulo}</p>
+            </div>
+            <div class="section">
+                <h2>Resumen Ejecutivo</h2>
+                <p>${resumen}</p>
+            </div>
+            <div class="section">
+                <h2>Cumplimiento de Objetivos</h2>
+                <p class="label">Objetivo General:</p>
+                <p>${document.getElementById('informe-obj-general-cumplimiento').value}% - ${document.getElementById('informe-obj-general-descripcion').value}</p>
+                <p class="label">Objetivos Específicos:</p>
+                <p>${document.getElementById('informe-obj-especificos-cumplimiento').value}% - ${document.getElementById('informe-obj-especificos-detalle').value}</p>
+            </div>
+            <div class="section">
+                <h2>Resultados y Productos</h2>
+                <p>${document.getElementById('informe-resultados').value}</p>
+                <p class="label">Productos Entregables:</p>
+                <p>${document.getElementById('informe-productos').value}</p>
+            </div>
+            <div class="section">
+                <h2>Impacto</h2>
+                <p>${document.getElementById('informe-impacto').value}</p>
+            </div>
+            <div class="section">
+                <h2>Conclusiones</h2>
+                <p>${document.getElementById('informe-conclusiones').value}</p>
+            </div>
+            <div class="section">
+                <h2>Recomendaciones</h2>
+                <p>${document.getElementById('informe-recomendaciones').value}</p>
+            </div>
+        </body>
+        </html>
+    `);
+}
+
+// Ver detalle de informe
+async function verDetalleInforme(informeId) {
+    try {
+        const { data: informe, error } = await supabaseClient
+            .from('informes_finales')
+            .select('*')
+            .eq('id', informeId)
+            .single();
+        
+        if (error) throw error;
+        
+        // Crear modal o ventana con detalles
+        alert(`
+INFORME FINAL - DETALLES
+
+Título: ${informe.titulo}
+Fecha: ${new Date(informe.fecha_entrega).toLocaleDateString('es-ES')}
+Estado: ${informe.estado}
+Cumplimiento Obj. General: ${informe.cumplimiento_objetivo_general}%
+Cumplimiento Obj. Específicos: ${informe.cumplimiento_objetivos_especificos}%
+
+Resumen:
+${informe.resumen_ejecutivo}
+        `);
+        
+    } catch (error) {
+        console.error('Error cargando detalle:', error);
+        mostrarToast('Error al cargar detalle del informe', 'error');
+    }
+}
+
+// Descargar informe
+function descargarInforme(url) {
+    window.open(url, '_blank');
+}
+// ============================================
+// FUNCIONES PARA PERFIL DEL PROYECTO
+// ============================================
+
+async function cargarPerfilProyecto() {
+    const selectProyecto = document.getElementById('selectProyectoPerfil');
+    if (!selectProyecto) return;
+    
+    // Limpiar y cargar proyectos
+    selectProyecto.innerHTML = '<option value="">Seleccione un proyecto...</option>';
+    
+    const proyectos = currentUser.role === 'Docente' 
+        ? projectsData.filter(p => p.docente_email === currentUser.email)
+        : projectsData;
+    
+    proyectos.forEach(p => {
+        const option = document.createElement('option');
+        option.value = p.id;
+        option.textContent = `${p.codigo} - ${p.titulo}`;
+        selectProyecto.appendChild(option);
+    });
+}
+
+async function cargarDetallesProyecto() {
+    const selectProyecto = document.getElementById('selectProyectoPerfil');
+    const proyectoId = selectProyecto?.value;
+    
+    const detalles = document.getElementById('detallesProyecto');
+    if (!detalles) return;
+    
+    if (!proyectoId) {
+        detalles.style.display = 'none';
+        return;
+    }
+    
+    detalles.style.display = 'block';
+    
+    // Buscar proyecto en datos locales o cargar de Supabase
+    let proyecto = projectsData.find(p => p.id === proyectoId);
+    
+    if (!proyecto) {
+        try {
+            const { data, error } = await supabaseClient
+                .from('proyectos')
+                .select('*')
+                .eq('id', proyectoId)
+                .single();
+            
+            if (error) throw error;
+            proyecto = data;
+        } catch (error) {
+            console.error('Error cargando proyecto:', error);
+            mostrarToast('Error al cargar proyecto', 'error');
+            return;
+        }
+    }
+    
+    // Calcular duración
+    const fechaInicio = new Date(proyecto.fecha_inicio);
+    const fechaFin = new Date(proyecto.fecha_fin);
+    const duracionMeses = Math.round((fechaFin - fechaInicio) / (1000 * 60 * 60 * 24 * 30));
+    
+    // Actualizar estadísticas
+    document.getElementById('perfil-estado').textContent = proyecto.estado || 'Registrado';
+    document.getElementById('perfil-progreso').textContent = (proyecto.porcentaje_avance || 0) + '% Completado';
+    document.getElementById('perfil-fecha-inicio').textContent = fechaInicio.toLocaleDateString('es-ES');
+    document.getElementById('perfil-fecha-fin').textContent = fechaFin.toLocaleDateString('es-ES');
+    document.getElementById('perfil-duracion').textContent = duracionMeses + ' meses';
+    
+    // Actualizar información general
+    document.getElementById('perfil-codigo').value = proyecto.codigo || '';
+    document.getElementById('perfil-tipo').value = proyecto.tipo || '';
+    document.getElementById('perfil-linea').value = proyecto.linea_investigacion || '';
+    document.getElementById('perfil-programa').value = proyecto.programa_estudios || '';
+    document.getElementById('perfil-titulo').value = proyecto.titulo || '';
+    document.getElementById('perfil-objetivo').value = proyecto.objetivo_general || '';
+    document.getElementById('perfil-objetivos-esp').value = proyecto.objetivos_especificos || '';
+    
+    // Equipo de investigación
+    document.getElementById('perfil-investigador').value = proyecto.investigador_principal || '';
+    
+    // Co-investigadores
+    const coInvestigadoresDiv = document.getElementById('perfil-coinvestigadores');
+    if (coInvestigadoresDiv && proyecto.co_investigadores && proyecto.co_investigadores.length > 0) {
+        coInvestigadoresDiv.innerHTML = proyecto.co_investigadores.map((co, index) => `
+            <div class="form-group">
+                <label>Co-investigador ${index + 1}</label>
+                <input type="text" value="${co}" readonly>
+            </div>
+        `).join('');
+    } else if (coInvestigadoresDiv) {
+        coInvestigadoresDiv.innerHTML = '<p style="color: #888; padding: 10px;">No hay co-investigadores registrados</p>';
+    }
+    
+    // Localización y beneficiarios
+    document.getElementById('perfil-depto').value = proyecto.localizacion_departamento || '';
+    document.getElementById('perfil-prov').value = proyecto.localizacion_provincia || '';
+    document.getElementById('perfil-benef-directos').value = proyecto.beneficiarios_directos || 0;
+    document.getElementById('perfil-benef-indirectos').value = proyecto.beneficiarios_indirectos || 0;
+    
+    // Generar timeline
+    generarTimelineProyecto(proyecto);
+}
+
+function generarTimelineProyecto(proyecto) {
+    const timelineDiv = document.getElementById('timelineProyecto');
+    if (!timelineDiv) return;
+    
+    const eventos = [
+        {
+            titulo: 'Proyecto Registrado',
+            fecha: proyecto.fecha_registro || proyecto.created_at,
+            completado: true,
+            icono: '📝'
+        },
+        {
+            titulo: 'Inicio del Proyecto',
+            fecha: proyecto.fecha_inicio,
+            completado: new Date(proyecto.fecha_inicio) <= new Date(),
+            icono: '🚀'
+        },
+        {
+            titulo: 'Desarrollo en Progreso',
+            fecha: null,
+            completado: (proyecto.porcentaje_avance || 0) > 0,
+            icono: '⚙️'
+        },
+        {
+            titulo: 'Informe Final',
+            fecha: null,
+            completado: proyecto.estado === 'Finalizado',
+            icono: '📋'
+        },
+        {
+            titulo: 'Finalización del Proyecto',
+            fecha: proyecto.fecha_fin,
+            completado: new Date(proyecto.fecha_fin) < new Date() && proyecto.estado === 'Finalizado',
+            icono: '✅'
+        }
+    ];
+    
+    timelineDiv.innerHTML = eventos.map(evento => `
+        <div class="timeline-item">
+            <div class="timeline-icon ${evento.completado ? 'completed' : ''}">
+                ${evento.icono}
+            </div>
+            <div class="timeline-content">
+                <h4>${evento.titulo}</h4>
+                <p>${evento.fecha ? new Date(evento.fecha).toLocaleDateString('es-ES') : 'En proceso'}</p>
+            </div>
+        </div>
+    `).join('');
+}
+// ============================================
+// FUNCIONES PARA AVANCES PERIÓDICOS
+// ============================================
+
+async function cargarAvancesPeriodicos() {
+    const selectProyecto = document.getElementById('selectProyectoAvances');
+    if (!selectProyecto) return;
+    
+    // Limpiar y cargar proyectos
+    selectProyecto.innerHTML = '<option value="">Seleccione un proyecto...</option>';
+    
+    const proyectos = currentUser.role === 'Docente' 
+        ? projectsData.filter(p => p.docente_email === currentUser.email)
+        : projectsData;
+    
+    proyectos.forEach(p => {
+        const option = document.createElement('option');
+        option.value = p.id;
+        option.textContent = `${p.codigo} - ${p.titulo}`;
+        selectProyecto.appendChild(option);
+    });
+    
+    // Mostrar formulario solo para docentes
+    const formAvance = document.getElementById('formNuevoAvance');
+    if (formAvance) {
+        formAvance.style.display = currentUser.role === 'Docente' ? 'block' : 'none';
+    }
+}
+
+async function cargarAvancesProyecto() {
+    const selectProyecto = document.getElementById('selectProyectoAvances');
+    const proyectoId = selectProyecto?.value;
+    
+    const contenedor = document.getElementById('contenedorAvances');
+    if (!contenedor) return;
+    
+    if (!proyectoId) {
+        contenedor.style.display = 'none';
+        return;
+    }
+    
+    contenedor.style.display = 'block';
+    
+    try {
+        // Cargar avances de Supabase
+        const { data: avances, error } = await supabaseClient
+            .from('avances_periodicos')
+            .select('*')
+            .eq('proyecto_id', proyectoId)
+            .order('fecha_avance', { ascending: false });
+        
+        if (error) throw error;
+        
+        // Actualizar estadísticas
+        document.getElementById('stat-avances-total').textContent = avances?.length || 0;
+        
+        if (avances && avances.length > 0) {
+            const ultimoAvance = avances[0];
+            document.getElementById('stat-ultimo-avance').textContent = 
+                new Date(ultimoAvance.fecha_avance).toLocaleDateString('es-ES');
+            document.getElementById('stat-progreso-global').textContent = 
+                ultimoAvance.porcentaje_avance + '%';
+        } else {
+            document.getElementById('stat-ultimo-avance').textContent = '-';
+            document.getElementById('stat-progreso-global').textContent = '0%';
+        }
+        
+        // Renderizar tabla de avances
+        const tbody = document.querySelector('#tablaAvances tbody');
+        if (tbody) {
+            if (!avances || avances.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 30px; color: #888;">
+                            No hay avances registrados para este proyecto
+                        </td>
+                    </tr>
+                `;
+            } else {
+                tbody.innerHTML = avances.map(av => `
+                    <tr>
+                        <td><strong>${av.periodo}</strong></td>
+                        <td>${new Date(av.fecha_avance).toLocaleDateString('es-ES')}</td>
+                        <td><strong>${av.porcentaje_avance}%</strong></td>
+                        <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis;">${av.actividades_realizadas}</td>
+                        <td><span class="status ${av.estado === 'Aprobado' ? 'status-approved' : 'status-pending'}">${av.estado || 'Registrado'}</span></td>
+                        <td>
+                            <button class="action-btn" onclick="verDetalleAvance('${av.id}')">Ver</button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        }
+        
+    } catch (error) {
+        console.error('Error cargando avances:', error);
+        mostrarToast('Error al cargar avances', 'error');
+    }
+}
+
+// Manejar envío del formulario de avances
+document.getElementById('formAvance')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const proyectoId = document.getElementById('selectProyectoAvances').value;
+    if (!proyectoId) {
+        mostrarToast('Seleccione un proyecto primero', 'warning');
+        return;
+    }
+    
+    try {
+        const avanceData = {
+            proyecto_id: proyectoId,
+            docente_email: currentUser.email,
+            periodo: document.getElementById('avance-periodo').value,
+            fecha_avance: document.getElementById('avance-fecha').value,
+            porcentaje_avance: parseInt(document.getElementById('avance-porcentaje').value),
+            actividades_realizadas: document.getElementById('avance-actividades').value,
+            resultados_obtenidos: document.getElementById('avance-resultados').value,
+            dificultades: document.getElementById('avance-dificultades').value,
+            observaciones: document.getElementById('avance-observaciones').value,
+            estado: 'Registrado'
+        };
+        
+        const { data, error } = await supabaseClient
+            .from('avances_periodicos')
+            .insert([avanceData])
+            .select();
+        
+        if (error) throw error;
+        
+        // Actualizar porcentaje del proyecto
+        await supabaseClient
+            .from('proyectos')
+            .update({ porcentaje_avance: avanceData.porcentaje_avance })
+            .eq('id', proyectoId);
+        
+        mostrarToast('✅ Avance registrado correctamente', 'success');
+        
+        // Limpiar formulario y recargar
+        this.reset();
+        document.getElementById('avanceFileStatus').textContent = '';
+        await cargarAvancesProyecto();
+        
+    } catch (error) {
+        console.error('Error guardando avance:', error);
+        mostrarToast('Error al guardar avance: ' + error.message, 'error');
+    }
+});
+
+// Manejar archivo de avance
+document.getElementById('avanceFileInput')?.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    const statusDiv = document.getElementById('avanceFileStatus');
+    
+    if (file) {
+        const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+        const maxSize = 10;
+        
+        if (sizeMB > maxSize) {
+            mostrarToast(`Archivo muy grande (${sizeMB}MB). Máximo ${maxSize}MB`, 'warning');
+            e.target.value = '';
+            statusDiv.textContent = '';
+            return;
+        }
+        
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (!['docx', 'pdf'].includes(ext)) {
+            mostrarToast('Solo se permiten archivos .docx o .pdf', 'warning');
+            e.target.value = '';
+            statusDiv.textContent = '';
+            return;
+        }
+        
+        statusDiv.textContent = `✅ ${file.name} (${sizeMB} MB)`;
+    } else {
+        statusDiv.textContent = '';
+    }
+});
+
+// Ver detalle de avance
+async function verDetalleAvance(avanceId) {
+    try {
+        const { data: avance, error } = await supabaseClient
+            .from('avances_periodicos')
+            .select('*')
+            .eq('id', avanceId)
+            .single();
+        
+        if (error) throw error;
+        
+        alert(`
+AVANCE PERIÓDICO - DETALLES
+
+Período: ${avance.periodo}
+Fecha: ${new Date(avance.fecha_avance).toLocaleDateString('es-ES')}
+Porcentaje: ${avance.porcentaje_avance}%
+Estado: ${avance.estado || 'Registrado'}
+
+Actividades Realizadas:
+${avance.actividades_realizadas}
+
+Resultados Obtenidos:
+${avance.resultados_obtenidos}
+
+${avance.dificultades ? 'Dificultades:\n' + avance.dificultades : ''}
+        `);
+        
+    } catch (error) {
+        console.error('Error cargando detalle:', error);
+        mostrarToast('Error al cargar detalle del avance', 'error');
+    }
+}
+// ============================================
+// FUNCIONES PARA RESOLUCIONES Y ARCHIVO
+// ============================================
+
+async function cargarResoluciones() {
+    console.log('Cargando resoluciones...');
+    // Esta función se implementará según los requisitos específicos
+    mostrarToast('Sección en desarrollo', 'info');
+}
+        // Configuración de permisos por rol
+const PERMISOS = {
+    'Director': {
+        dashboard: true,
+        registro: false,
+        perfil: true,
+        avances: true,
+        informe: true,
+        evaluacion: true,
+        resoluciones: true,
+        verTodosProyectos: true,
+        aprobarProyectos: true
+    },
+    'Jefe de Investigación': {
+        dashboard: true,
+        registro: false,
+        perfil: true,
+        avances: true,
+        informe: true,
+        evaluacion: false,
+        resoluciones: true,
+        verTodosProyectos: true,
+        aprobarProyectos: false
+    },
+    'Evaluador': {
+        dashboard: true,
+        registro: false,
+        perfil: true,
+        avances: true,
+        informe: true,
+        evaluacion: true,
+        resoluciones: false,
+        verTodosProyectos: false,
+        aprobarProyectos: false
+    },
+    'Docente': {
+        dashboard: true,
+        registro: true,
+        perfil: true,
+        avances: true,
+        informe: true,
+        evaluacion: false,
+        resoluciones: false,
+        verTodosProyectos: false,
+        aprobarProyectos: false
+    }
+};
+
+// Función para verificar permisos
+function tienePermiso(seccion) {
+    if (!currentUser || !currentUser.role) return false;
+    const permisos = PERMISOS[currentUser.role];
+    return permisos && permisos[seccion] === true;
+}
+        
+        const SUPABASE_URL = 'https://nccvuiinypwmdorxwdbz.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jY3Z1aWlueXB3bWRvcnh3ZGJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEzMjg3OTcsImV4cCI6MjA3NjkwNDc5N30.8XyANEGc2oD1gkgjtHQEATSeCrCE9DdsUcreoJR5LRQ';
+
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let projectsData = [];
+        let currentUser = null;
+        // Función para renderizar menú según permisos
+function renderizarMenu() {
+    const menuContainer = document.querySelector('.menu');
+    if (!menuContainer) return;
+    
+    const menuItems = [
+        {
+            id: 'dashboard',
+            permiso: 'dashboard',
+            icono: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>`,
+            texto: 'Dashboard'
+        },
+        {
+            id: 'registro',
+            permiso: 'registro',
+            icono: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>`,
+            texto: 'Registro de Proyecto'
+        },
+        {
+            id: 'perfil',
+            permiso: 'perfil',
+            icono: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>`,
+            texto: 'Perfil del Proyecto'
+        },
+        {
+            id: 'avances',
+            permiso: 'avances',
+            icono: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>`,
+            texto: 'Avances Periódicos'
+        },
+        {
+            id: 'informe',
+            permiso: 'informe',
+            icono: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>`,
+            texto: 'Informe Final'
+        },
+        {
+            id: 'evaluacion',
+            permiso: 'evaluacion',
+            icono: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>`,
+            texto: 'Evaluación'
+        },
+        {
+            id: 'resoluciones',
+            permiso: 'resoluciones',
+            icono: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path>`,
+            texto: 'Resoluciones y Archivo'
+        }
+    ];
+    
+    menuContainer.innerHTML = menuItems
+        .filter(item => tienePermiso(item.permiso))
+        .map((item, index) => `
+            <a href="#" class="menu-item ${index === 0 ? 'active' : ''}" 
+               onclick="showSection('${item.id}'); return false;">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    ${item.icono}
+                </svg>
+                ${item.texto}
+            </a>
+        `).join('');
+}
+
+        // ========== UTILIDADES ==========
+        function mostrarToast(mensaje, tipo = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${tipo}`;
+            toast.textContent = mensaje;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // ========== LOGIN ==========
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const emailInput = document.getElementById('username').value.toLowerCase().trim();
+    const passwordInput = document.getElementById('password').value;
+    const errorElement = document.getElementById('loginError');
+    const submitButton = e.target.querySelector('button[type="submit"]');
+    
+    submitButton.disabled = true;
+    submitButton.textContent = 'Iniciando sesión...';
+    errorElement.classList.add('hidden');
+    
+    console.log('🔐 Intentando login con:', emailInput);
+    
+    try {
+        // 1. Autenticar en Supabase Auth
+        const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
+            email: emailInput,
+            password: passwordInput
+        });
+        
+        if (authError) {
+            console.error('❌ Error de autenticación:', authError);
+            throw new Error('Credenciales incorrectas. Verifica tu email y contraseña.');
+        }
+        
+        console.log('✅ Auth exitoso. UID:', authData.user.id);
+        
+        // 2. Buscar usuario en tabla usuarios por EMAIL
+        const { data: userData, error: userError } = await supabaseClient
+            .from('usuarios')
+            .select('*')
+            .eq('email', emailInput)
+            .single();
+        
+        console.log('👤 Datos usuario:', userData);
+        
+        if (userError || !userData) {
+            console.error('❌ Usuario no encontrado en tabla usuarios');
+            await supabaseClient.auth.signOut();
+            throw new Error('Usuario no registrado en el sistema. Contacte al administrador.');
+        }
+        
+        // 3. Guardar sesión
+        currentUser = {
+            email: userData.email,
+            name: userData.nombre_completo,
+            role: userData.rol,
+            id: authData.user.id,
+            authUser: authData.user
+        };
+        
+        console.log('✅ Usuario cargado:', currentUser);
+        
+        // 4. Mostrar interfaz
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('appContainer').classList.add('visible');
+        document.getElementById('userName').textContent = currentUser.name;
+        document.getElementById('userRole').textContent = currentUser.role;
+        
+        // ✅✅✅ PASO 4: AGREGAR ESTA LÍNEA ✅✅✅
+        renderizarMenu();
+        
+        await loadProjectsAndStats();
+        mostrarToast('Bienvenido ' + currentUser.name, 'success');
+        
+    } catch (error) {
+        console.error('❌ Error completo:', error);
+        errorElement.textContent = error.message || 'Error de conexión';
+        errorElement.classList.remove('hidden');
+    } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Iniciar Sesión';
+    }
+});
+
+        // ========== LOGOUT ==========
+        async function systemLogout() {
+            if (confirm('¿Está seguro que desea cerrar sesión?')) {
+                await supabaseClient.auth.signOut();
+                currentUser = null;
+                projectsData = [];
+                document.getElementById('appContainer').classList.remove('visible');
+                document.getElementById('loginScreen').style.display = 'flex';
+                document.getElementById('loginForm').reset();
+                mostrarToast('Sesión cerrada', 'info');
+            }
+        }
+
+        // ========== NAVEGACIÓN ==========
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('closed');
+        }
+
+        function showSection(sectionId) {
+    // ✅ NUEVO: Verificar permisos
+    if (!tienePermiso(sectionId)) {
+        mostrarToast('No tienes permiso para acceder a esta sección', 'error');
+        return;
+    }
+    
+    // Ocultar todas las secciones
+    document.querySelectorAll('.content-section').forEach(s => s.classList.add('hidden'));
+    
+    // Mostrar la sección solicitada
+    const section = document.getElementById(sectionId);
+    if (section) {
+        section.classList.remove('hidden');
+    }
+    
+    // Actualizar menú activo
+    document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
+    event?.currentTarget?.classList.add('active');
+    
+    // Actualizar título
+    const titles = {
+        'dashboard': 'Dashboard',
+        'registro': 'Registro de Proyecto',
+        'perfil': 'Perfil del Proyecto',
+        'avances': 'Avances Periódicos',
+        'informe': 'Informe Final',
+        'evaluacion': 'Evaluación',
+        'resoluciones': 'Resoluciones y Archivo'
+    };
+    document.getElementById('pageTitle').textContent = titles[sectionId] || 'Dashboard';
+    
+    // ✅ NUEVO: Cargar datos específicos de la sección
+    cargarDatosSeccion(sectionId);
+}
+
+// ✅ NUEVA FUNCIÓN: Agregar justo después de showSection
+async function cargarDatosSeccion(sectionId) {
+    switch(sectionId) {
+        case 'perfil':
+            await cargarPerfilProyecto();
+            break;
+        case 'avances':
+            await cargarAvancesPeriodicos();
+            break;
+        case 'informe':
+            await cargarInformeFinal();
+            break;
+        case 'resoluciones':
+            await cargarResoluciones();
+            break;
+    }
+}
+
+        // ========== DATOS ==========
+        async function loadProjectsAndStats() {
+            const projects = await fetchProjects();
+            renderProjectsTable(projects);
+            updateDashboardStats(projects);
+        }
+
+        async function fetchProjects() {
+            try {
+                let query = supabaseClient
+                    .from('proyectos')
+                    .select('id, codigo, titulo, tipo, fecha_registro, estado, docente_email, porcentaje_avance');
+
+                if (currentUser && currentUser.role === 'Docente') {
+                    query = query.eq('docente_email', currentUser.email);
+                }
+                
+                const { data, error } = await query.order('fecha_registro', { ascending: false });
+                
+                if (error) {
+                    return getDatosDemostracion();
+                }
+                
+                projectsData = data || [];
+                return projectsData;
+                
+            } catch (error) {
+                return getDatosDemostracion();
+            }
+        }
+
+        function getDatosDemostracion() {
+            return [
+                { 
+                    id: 'demo-1', 
+                    codigo: 'INV-2024-001', 
+                    titulo: 'Sistema de Gestión Académica con IA', 
+                    tipo: 'Innovación Tecnológica', 
+                    fecha_registro: '2024-03-15T00:00:00Z', 
+                    estado: 'En Revisión',
+                    porcentaje_avance: 45,
+                    docente_email: 'docente@iestp.edu' 
+                }
+            ];
+        }
+
+        function renderProjectsTable(projects) {
+            const tbody = document.querySelector('#projectsTable tbody');
+            if (!tbody) return;
+
+            tbody.innerHTML = '';
+            
+            projects.forEach((p) => {
+                const statusClass = p.estado === 'Aprobado' ? 'status-approved' : 
+                                  p.estado === 'En Revisión' || p.estado === 'Registrado' ? 'status-review' : 
+                                  'status-pending';
+                const fechaRegistro = p.fecha_registro ? new Date(p.fecha_registro).toLocaleDateString('es-ES') : 'N/A';
+                
+                const row = `
+                    <tr>
+                        <td>${p.codigo}</td>
+                        <td>${p.titulo}</td>
+                        <td>${p.tipo}</td>
+                        <td>${fechaRegistro}</td>
+                        <td><span class="status ${statusClass}">${p.estado}</span></td>
+                        <td><button class="action-btn">Ver</button></td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+
+            if (projects.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #888; padding: 20px;">No tienes proyectos registrados.</td></tr>`;
+            }
+        }
+
+        function updateDashboardStats(projects) {
+            const activeCount = projects.filter(p => p.estado !== 'Aprobado' && p.estado !== 'Archivado').length;
+            const approvedCount = projects.filter(p => p.estado === 'Aprobado').length;
+            const pendingCount = projects.filter(p => p.estado === 'Registrado' || p.estado === 'En Revisión').length;
+
+            document.getElementById('stat-active-projects').textContent = activeCount;
+            document.getElementById('stat-approved-projects').textContent = approvedCount;
+            document.getElementById('stat-pending-advances').textContent = pendingCount;
+            document.getElementById('stat-evaluations').textContent = pendingCount;
+        }
+
+        // ========== REGISTRO DE PROYECTO ==========
+        document.getElementById('fileInput')?.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const statusDiv = document.getElementById('fileStatus');
+            
+            if (file) {
+                const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+                const maxSize = 10;
+                
+                if (sizeMB > maxSize) {
+                    mostrarToast(`Archivo muy grande (${sizeMB}MB). Máximo ${maxSize}MB`, 'warning');
+                    e.target.value = '';
+                    statusDiv.textContent = '';
+                    return;
+                }
+                
+                const ext = file.name.split('.').pop().toLowerCase();
+                if (!['docx', 'pdf'].includes(ext)) {
+                    mostrarToast('Solo se permiten archivos .docx o .pdf', 'warning');
+                    e.target.value = '';
+                    statusDiv.textContent = '';
+                    return;
+                }
+                
+                statusDiv.textContent = `✅ ${file.name} (${sizeMB} MB)`;
+            } else {
+                statusDiv.textContent = '';
+            }
+        });
+
+        document.getElementById('registroForm')?.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const fileInput = document.getElementById('fileInput');
+            if (!fileInput.files[0]) {
+                mostrarToast('Debes seleccionar un archivo', 'warning');
+                return;
+            }
+            
+            const coInvestigadores = [];
+            for (let i = 1; i <= 3; i++) {
+                const coInv = document.getElementById(`reg-co-investigador-${i}`).value.trim();
+                if (coInv) coInvestigadores.push(coInv);
+            }
+            
+            const projectData = {
+                titulo: document.getElementById('reg-titulo').value,
+                tipo: document.getElementById('reg-tipo').value,
+                linea: document.getElementById('reg-linea').value,
+                programa_estudios: document.getElementById('reg-programa').value,
+                fecha_inicio: document.getElementById('reg-fecha-inicio').value,
+                fecha_fin: document.getElementById('reg-fecha-fin').value,
+                objetivo_general: document.getElementById('reg-objetivo-general').value,
+                objetivos_especificos: document.getElementById('reg-objetivos-especificos').value,
+                beneficiarios_directos: parseInt(document.getElementById('reg-beneficiarios-directos').value || 0),
+                beneficiarios_indirectos: parseInt(document.getElementById('reg-beneficiarios-indirectos').value || 0),
+                localizacion_depto: document.getElementById('reg-localizacion-depto').value,
+                localizacion_prov: document.getElementById('reg-localizacion-prov').value,
+                integrantes: { 
+                    principal: document.getElementById('reg-investigador-principal').value,
+                    co_investigadores: coInvestigadores 
+                }
+            };
+            
+            const success = await registerProject(projectData);
+            
+            if (success) {
+                await loadProjectsAndStats();
+                showSection('dashboard');
+                this.reset();
+                document.getElementById('fileStatus').textContent = '';
+            }
+        });
+
+        async function registerProject(projectData) {
+            if (!currentUser || currentUser.role !== 'Docente') {
+                mostrarToast('Solo los docentes pueden registrar proyectos', 'error');
+                return false;
+            }
+            
+            try {
+                const { data, error } = await supabaseClient
+                    .from('proyectos')
+                    .insert([
+                        { 
+                            titulo: projectData.titulo,
+                            tipo: projectData.tipo,
+                            linea_investigacion: projectData.linea,
+                            programa_estudios: projectData.programa_estudios,
+                            fecha_inicio: projectData.fecha_inicio,
+                            fecha_fin: projectData.fecha_fin,
+                            objetivo_general: projectData.objetivo_general,
+                            objetivos_especificos: projectData.objetivos_especificos,
+                            beneficiarios_directos: projectData.beneficiarios_directos,
+                            beneficiarios_indirectos: projectData.beneficiarios_indirectos,
+                            localizacion_departamento: projectData.localizacion_depto,
+                            localizacion_provincia: projectData.localizacion_prov,
+                            investigador_principal: projectData.integrantes.principal,
+                            co_investigadores: projectData.integrantes.co_investigadores,
+                            docente_email: currentUser.email,
+                            estado: 'Registrado',
+                            porcentaje_avance: 0
+                        }
+                    ])
+                    .select();
+
+                if (error) {
+                    mostrarToast('Error al registrar proyecto: ' + error.message, 'error');
+                    return false;
+                }
+
+                mostrarToast('✅ Proyecto registrado con éxito. Código: ' + data[0].codigo, 'success');
+                return true;
+
+            } catch (error) {
+                mostrarToast('Error al registrar proyecto: ' + error.message, 'error');
+                return false;
+            }
+        }
+
+        function limpiarFormulario(formId) {
+            const form = document.getElementById(formId);
+            if (form) {
+                form.reset();
+                document.getElementById('fileStatus').textContent = '';
+                mostrarToast('Formulario limpiado', 'info');
+            }
+        }
+
+        // ========== EVALUACIÓN ==========
+        function actualizarPuntuacion(criterio, valor) {
+            document.getElementById(`punt${criterio}`).value = valor;
+            calcularPuntuacionTotal();
+        }
+
+        function calcularPuntuacionTotal() {
+            let total = 0;
+            for (let i = 1; i <= 6; i++) {
+                const val = parseInt(document.getElementById(`punt${i}`).value) || 0;
+                total += val;
+            }
+            document.getElementById('puntTotal').value = total;
+        }
+
+        function guardarEvaluacion() {
+            const proyectoId = document.getElementById('selectProyectoEval').value;
+            const comentarios = document.getElementById('comentariosEval').value;
+            const decision = document.getElementById('decisionFinal').value;
+            const puntTotal = document.getElementById('puntTotal').value;
+            
+            if (!proyectoId || !comentarios || !decision) {
+                mostrarToast('Complete todos los campos requeridos', 'warning');
+                return;
+            }
+            
+            if (!puntTotal || puntTotal == 0) {
+                mostrarToast('Debe completar la rúbrica de evaluación', 'warning');
+                return;
+            }
+            
+            mostrarToast('✅ Evaluación guardada exitosamente', 'success');
+            
+            setTimeout(() => {
+                // Limpiar formulario
+                document.getElementById('selectProyectoEval').value = '';
+                document.getElementById('comentariosEval').value = '';
+                document.getElementById('recomendacionesEval').value = '';
+                document.getElementById('decisionFinal').value = '';
+                
+                // Limpiar rúbrica
+                for (let i = 1; i <= 6; i++) {
+                    document.querySelectorAll(`input[name="criterio${i}"]`).forEach(r => r.checked = false);
+                    document.getElementById(`punt${i}`).value = 0;
+                }
+                document.getElementById('puntTotal').value = 0;
+                
+                showSection('dashboard');
+            }, 2000);
+        }
+
+        function generarPDFEvaluacion() {
+            const proyectoId = document.getElementById('selectProyectoEval').value;
+            
+            if (!proyectoId) {
+                mostrarToast('Seleccione un proyecto primero', 'warning');
+                return;
+            }
+            
+            const proyectoTexto = document.getElementById('selectProyectoEval').options[document.getElementById('selectProyectoEval').selectedIndex].text;
+            
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                // Título
+                doc.setFontSize(18);
+                doc.setTextColor(102, 126, 234);
+                doc.text('ACTA DE EVALUACIÓN DE PROYECTO', 105, 20, { align: 'center' });
+                
+                // Información institucional
+                doc.setFontSize(12);
+                doc.setTextColor(0, 0, 0);
+                doc.text('I.E.S.T.P. "A.A.C.D."', 105, 30, { align: 'center' });
+                doc.text('Sistema de Gestión de Investigación', 105, 37, { align: 'center' });
+                
+                // Línea separadora
+                doc.setDrawColor(102, 126, 234);
+                doc.setLineWidth(0.5);
+                doc.line(20, 42, 190, 42);
+                
+                // Datos del proyecto
+                doc.setFontSize(11);
+                doc.setFont(undefined, 'bold');
+                doc.text('DATOS DEL PROYECTO', 20, 52);
+                doc.setFont(undefined, 'normal');
+                
+                let y = 60;
+                doc.text('Proyecto: ' + proyectoTexto, 20, y);
+                
+                // Resultados de evaluación
+                y += 15;
+                doc.setFont(undefined, 'bold');
+                doc.text('RESULTADOS DE EVALUACIÓN', 20, y);
+                doc.setFont(undefined, 'normal');
+                
+                y += 8;
+                const criterios = [
+                    'Planteamiento del Problema',
+                    'Marco Teórico',
+                    'Metodología',
+                    'Resultados y Análisis',
+                    'Conclusiones',
+                    'Formato APA 7ma'
+                ];
+                
+                for (let i = 1; i <= 6; i++) {
+                    const punt = document.getElementById(`punt${i}`).value || 0;
+                    doc.text(`${i}. ${criterios[i-1]}: ${punt}/5`, 25, y);
+                    y += 6;
+                }
+                
+                y += 5;
+                doc.setFont(undefined, 'bold');
+                const puntTotal = document.getElementById('puntTotal').value || 0;
+                doc.text(`PUNTUACIÓN TOTAL: ${puntTotal}/30`, 20, y);
+                
+                // Decisión
+                y += 10;
+                doc.text('DECISIÓN FINAL', 20, y);
+                doc.setFont(undefined, 'normal');
+                y += 7;
+                const decision = document.getElementById('decisionFinal').value || 'Pendiente';
+                doc.text(decision, 20, y);
+                
+                // Comentarios
+                y += 10;
+                doc.setFont(undefined, 'bold');
+                doc.text('COMENTARIOS Y OBSERVACIONES', 20, y);
+                doc.setFont(undefined, 'normal');
+                y += 7;
+                const comentarios = document.getElementById('comentariosEval').value || 'Sin comentarios';
+                const lineasComentarios = doc.splitTextToSize(comentarios, 170);
+                doc.text(lineasComentarios, 20, y);
+                
+                // Recomendaciones
+                y += (lineasComentarios.length * 6) + 10;
+                if (y > 250) y = 250;
+                doc.setFont(undefined, 'bold');
+                doc.text('RECOMENDACIONES', 20, y);
+                doc.setFont(undefined, 'normal');
+                y += 7;
+                const recomendaciones = document.getElementById('recomendacionesEval').value || 'Sin recomendaciones';
+                const lineasRecomendaciones = doc.splitTextToSize(recomendaciones, 170);
+                doc.text(lineasRecomendaciones, 20, y);
+                
+                // Pie de página
+                y = 270;
+                doc.setDrawColor(200, 200, 200);
+                doc.line(20, y, 190, y);
+                y += 7;
+                doc.setFontSize(9);
+                doc.text(`Evaluador: ${currentUser ? currentUser.name : 'Sistema'}`, 20, y);
+                doc.text(`Fecha: ${new Date().toLocaleDateString('es-ES')}`, 150, y);
+                
+                // Guardar PDF
+                const nombreArchivo = `Evaluacion_${proyectoTexto.split(' - ')[0]}_${Date.now()}.pdf`;
+                doc.save(nombreArchivo);
+                
+                mostrarToast('✅ PDF generado exitosamente', 'success');
+                
+            } catch (error) {
+                console.error('Error al generar PDF:', error);
+                mostrarToast('Error al generar PDF. Asegúrate de tener jsPDF cargado.', 'error');
+            }
+        }
+
+        // ========== INICIALIZACIÓN ==========
+        window.addEventListener('load', async function() {
+            console.log('Sistema cargado');
+            
+            // Configurar fecha de hoy
+            const today = new Date().toISOString().split('T')[0];
+            const fechaEvalInput = document.getElementById('fechaEval');
+            if (fechaEvalInput) fechaEvalInput.value = today;
+            
+            // Responsive
+            if (window.innerWidth <= 768) {
+                document.getElementById('sidebar').classList.add('closed');
+            }
+            
+            // Verificar sesión existente
+            try {
+                const { data: { session }, error } = await supabaseClient.auth.getSession();
+                
+                if (session && session.user) {
+                    const { data: userData, error: userError } = await supabaseClient
+                        .from('usuarios')
+                        .select('*')
+                        .eq('email', session.user.email)
+                        .single();
+                    
+                    if (userData && !userError) {
+                        currentUser = {
+                            email: userData.email,
+                            name: userData.nombre_completo,
+                            role: userData.rol,
+                            id: session.user.id,
+                            authUser: session.user
+                        };
+                        
+                        document.getElementById('loginScreen').style.display = 'none';
+                        document.getElementById('appContainer').classList.add('visible');
+                        document.getElementById('userName').textContent = currentUser.name;
+                        document.getElementById('userRole').textContent = currentUser.role;
+                        
+                        await loadProjectsAndStats();
+                    }
+                }
+            } catch (error) {
+                console.error('Error al verificar sesión:', error);
+            }
+        });
+
+        window.addEventListener('resize', function() {
+            if (window.innerWidth <= 768) {
+                document.getElementById('sidebar').classList.add('closed');
+            } else {
+                document.getElementById('sidebar').classList.remove('closed');
+            }
+        });
+
+        console.log('✅ Sistema completamente funcional');
+    </script>
+</body>
+</html>
